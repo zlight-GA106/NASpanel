@@ -1,0 +1,11 @@
+{
+  "name": "storage-station-assets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Only for downloading browser assets; the server has no Node.js dependency.",
+  "devDependencies": {
+    "@microsoft/signalr": "8.0.29",
+    "echarts": "6.1.0",
+    "@novnc/novnc": "1.7.0"
+  }
+}

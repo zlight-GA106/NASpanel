@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>总览 · Storage Station</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/css/app.css"><script defer src="/vendor/signalr.min.js"></script><script defer src="/vendor/echarts.min.js"></script><script type="module" src="/js/dashboard.js"></script></head><body data-page="overview"><div id="shell"></div><main class="main"><div class="breadcrumb"><a href="/">Storage Station</a> / 总览</div><div id="environment" class="notice warning hidden"></div>
+<div class="page-head"><div><h1>系统总览</h1><p>归档服务器的运行状态与存储健康</p></div><div class="head-actions"><span id="overall"></span><a class="button" href="/system">查看系统详情</a></div></div>
+<div id="health-notice" class="notice hidden"></div>
+<div class="metrics">
+<div class="card metric"><div class="eyebrow">CPU 使用率</div><div class="metric-value"><span id="cpu">--</span><small>%</small></div><div class="spark" id="cpu-spark"></div><div class="metric-note" id="cpu-name">等待采样</div></div>
+<div class="card metric"><div class="eyebrow">内存使用情况</div><div class="metric-value"><span id="memory">--</span><small id="memory-total">/ -- GB</small></div><div class="meter"><span id="memory-bar"></span></div><div class="metric-note" id="memory-percent">-- % 已使用</div></div>
+<div class="card metric"><div class="eyebrow">CPU 温度</div><div class="metric-value"><span id="temperature">--</span><small>°C</small></div><div class="spark" id="temp-spark"></div><div class="metric-note" id="temperature-note">等待温度传感器</div></div>
+<div class="card metric"><div class="eyebrow">机箱风扇</div><div class="metric-value"><span id="rpm">--</span><small>RPM</small></div><div class="metric-note" id="fan-output">PWM -- %</div><div class="metric-note"><a href="/fans" id="fan-mode">查看风扇控制 →</a></div></div>
+</div>
+<div class="section-head"><h2>存储阵列 <span id="disk-count">8 个固定盘位</span></h2><a href="/storage">管理存储 →</a></div>
+<div id="unassigned" class="notice hidden"></div><div class="bays" id="bays"><div class="loading">正在读取磁盘缓存…</div></div>
+<div class="two-col"><section class="card"><div class="card-head"><h2>系统负载</h2><span class="muted">最近 1 小时</span></div><div class="card-body"><div class="chart short" id="load-chart"></div></div></section><section class="card"><div class="card-head"><h2>最近事件</h2><a href="/events">全部事件 →</a></div><div class="table-wrap"><table><thead><tr><th>时间</th><th>级别</th><th>事件</th></tr></thead><tbody id="recent-events"></tbody></table></div></section></div>
+<section class="card"><div class="card-body"><dl class="kv" id="host-info"></dl></div></section>
+<footer class="footer"><span>Storage Station · 本地服务器控制台</span><span id="updated">等待采样</span></footer></main><div id="toast" role="status" aria-live="polite" hidden></div></body></html>

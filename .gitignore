@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/Data/*.db*
+**/Data/keys/
+**/logs/
+**/appsettings.Local.json
+artifacts/*
+!artifacts/StorageStation-win-x64.zip
+node_modules/
+.vs/
+*.user

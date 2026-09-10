@@ -1,0 +1,3 @@
+import {$,api} from './app.js';
+if(new URLSearchParams(location.search).get('passwordChanged')==='1'){$('login-error').textContent='密码已重置，请使用新密码登录。';$('login-error').classList.add('success-text');}
+$('login-form').onsubmit=async event=>{event.preventDefault();$('login-submit').disabled=true;$('login-error').textContent='';$('login-error').classList.remove('success-text');try{await api('/api/auth/login','POST',{username:$('username').value,password:$('password').value});$('password').value='';location.replace('/');}catch(error){$('login-error').textContent=error.message;}finally{$('login-submit').disabled=false;}};
