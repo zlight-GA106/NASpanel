@@ -122,6 +122,18 @@ IIS 站点物理目录为 `C:\StorageStation\wwwroot`，应用池使用 No Manag
 
 网页远程桌面可随后安装 VNC Server 和 `deploy/install-websockify.ps1`，无需改动监控后端；配置细节同样见部署指南。
 
+### 局域网唤醒
+
+在与磁盘站相同局域网的 Windows 电脑上运行独立脚本：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Wake-StorageStation.ps1
+```
+
+脚本默认查找 `192.168.100.145/24`，先通过网络邻居表自动取得 MAC，再向磁盘站网段广播 Wake-on-LAN 魔术包；MAC 不写死在脚本中。当前电脑与磁盘站不在同一子网时，首次运行会通过 Windows SSH 查询磁盘站网卡并要求输入 SSH 密码。成功发现后，IP/MAC 保存到 `%LOCALAPPDATA%\StorageStation\wol-target.json`，以后磁盘站关机时直接使用缓存，不再需要 SSH。地址或掩码改变时可传入 `-ServerIp 新地址 -TargetPrefixLength 前缀长度 -SshUser 用户名`，并在目标开机时运行一次以更新缓存。跨子网唤醒还要求路由器允许把定向广播转发到磁盘站网段；主板 BIOS/UEFI 与网卡也需启用 Wake-on-LAN。
+
+TightVNC 已配置为接受控制台账户密码。标准 VNC 认证只校验密码的前 8 个字符，所以在远程桌面弹窗中输入完整控制台密码可以连接，但第 9 位以后的字符不会增加 VNC 认证强度。
+
 ## 首次硬件配置
 
 1. 打开 `http://服务器IP:8080/`，使用生产 Admin 登录。

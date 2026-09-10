@@ -10,5 +10,6 @@ Get-ChildItem -LiteralPath $PSScriptRoot -File | Copy-Item -Destination (Join-Pa
 New-Item -ItemType Directory -Force -Path (Join-Path $Output 'tools/smartmontools') | Out-Null
 Copy-Item -LiteralPath "$root/tools/smartmontools/README.md" -Destination (Join-Path $Output 'tools/smartmontools/README.md')
 Copy-Item -LiteralPath "$root/README.md" -Destination (Join-Path $Output 'README.md')
+Copy-Item -LiteralPath "$root/Wake-StorageStation.ps1" -Destination (Join-Path $Output 'Wake-StorageStation.ps1')
 if (Test-Path -LiteralPath "$root/LICENSE") { Copy-Item -LiteralPath "$root/LICENSE" -Destination (Join-Path $Output 'LICENSE') }
 Write-Host "发布完成：$Output"
