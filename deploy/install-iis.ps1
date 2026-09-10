@@ -23,6 +23,8 @@ if ($useHttps) {
 $appcmd = "$env:windir/System32/inetsrv/appcmd.exe"
 $modules = (& $appcmd list modules) -join "`n"
 if ($modules -notmatch 'RewriteModule' -or $modules -notmatch 'ApplicationRequestRouting') { throw '请先安装 IIS URL Rewrite 2 与 ARR 3，见 README。' }
+& $appcmd unlock config -section:system.webServer/webSocket | Out-Null
+if ($LASTEXITCODE -ne 0) { throw '解锁 IIS WebSocket 配置节失败' }
 if (Test-Path "IIS:/Sites/$SiteName") { throw "IIS 网站 $SiteName 已存在，请手动检查后更新。" }
 $protocol = if ($useHttps) { 'https' } else { 'http' }
 $conflictingBinding = Get-WebBinding -Protocol $protocol | Where-Object {

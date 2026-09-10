@@ -9,7 +9,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $directory 'Data/monitor.db'))) { th
 New-Item -ItemType Directory -Force -Path "$directory/Data", "$directory/logs" | Out-Null
 # Data/keys and database must be writable only by Administrators and the service identity.
 foreach ($path in @("$directory/Data", "$directory/logs")) {
-    & icacls.exe $path /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T | Out-Null
+    & icacls.exe $path /inheritance:r | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "移除 ACL 继承失败：$path" }
+    & icacls.exe $path /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "设置 ACL 失败：$path" }
 }
 New-Service -Name 'StorageStationService' -BinaryPathName ('"' + $exe + '"') -DisplayName 'Storage Station' -Description '本地服务器硬件、SMART 与风扇控制台' -StartupType Automatic | Out-Null
