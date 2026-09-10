@@ -9,6 +9,7 @@ using StorageStation.Web.Storage;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using StorageStation.Web.Security;
+using StorageStation.Web.Hardware;
 
 namespace StorageStation.Tests;
 
@@ -90,20 +91,40 @@ public class CriticalLogicTests
     }
 
     [Fact]
-    public async Task EightBaysPersistAndCannotBindOneDiskTwice()
+    public void CpuPackageTemperatureWinsOverDistanceToTjMax()
+    {
+        SensorInfo[] sensors =
+        [
+            new("/cpu/package", "CPU Package", "Temperature", "CPU", "Cpu", 37, false),
+            new("/cpu/distance", "CPU Core Distance to TjMax", "Temperature", "CPU", "Cpu", 65, false),
+            new("/board/cpu", "CPU Core", "Temperature", "Nuvoton", "SuperIO", 36.5, false)
+        ];
+        Assert.Equal(37, SensorDiscovery.SelectTemperature(sensors, null));
+        Assert.Equal(36.5, SensorDiscovery.SelectTemperature(sensors, "/board/cpu"));
+    }
+
+    [Fact]
+    public async Task LegacyBaysMigrateAndSupportAddingAndDeletingEmptySlots()
     {
         var directory = Path.Combine(Path.GetTempPath(), "StorageStationTest-" + Guid.NewGuid().ToString("N"));
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["StorageStation:DataDirectory"] = directory }).Build();
-        var db = new StationDatabase(new TestEnvironment(directory), config);
         try
         {
+            Directory.CreateDirectory(directory);
+            await using (var legacy = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(directory, "monitor.db") }.ToString()))
+            {
+                await legacy.OpenAsync();
+                await using var command = legacy.CreateCommand();
+                command.CommandText = "CREATE TABLE disk_bays(bay_number INTEGER PRIMARY KEY CHECK(bay_number BETWEEN 1 AND 8), disk_serial TEXT UNIQUE, model TEXT, last_seen INTEGER);" +
+                    "INSERT INTO disk_bays(bay_number,disk_serial) VALUES(5,'SERIAL-123'); PRAGMA user_version=1;";
+                await command.ExecuteNonQueryAsync();
+            }
+            var db = new StationDatabase(new TestEnvironment(directory), config);
             await db.Initialize(); Assert.Equal(8, (await db.Bays()).Count);
-            await db.MapBay(5, "SERIAL-123", default);
+            Assert.Equal("SERIAL-123", (await db.Bays())[4]["serial"]);
             await Assert.ThrowsAsync<SqliteException>(() => db.MapBay(6, "SERIAL-123", default));
-            var reopened = new StationDatabase(new TestEnvironment(directory), config);
-            Assert.Equal("SERIAL-123", (await reopened.Bays())[4]["serial"]);
-            await reopened.MapBay(5, null, default);
-            Assert.Null((await reopened.Bays())[4]["serial"]);
+            await db.AddBay(9, default); Assert.Equal(9, (await db.Bays()).Count);
+            await db.DeleteBay(9, default); Assert.Equal(8, (await db.Bays()).Count);
         }
         finally { SqliteConnection.ClearAllPools(); Directory.Delete(directory, recursive: true); }
     }

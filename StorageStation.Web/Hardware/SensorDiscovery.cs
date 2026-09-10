@@ -17,7 +17,9 @@ public static class SensorDiscovery
     public static double? SelectTemperature(SensorInfo[] sensors, string? identifier)
     {
         if (!string.IsNullOrWhiteSpace(identifier)) return sensors.FirstOrDefault(x => x.Id == identifier && x.Type == "Temperature")?.Value;
-        // Prefer the hottest CPU temperature across packages/cores, independent of localized names.
-        return sensors.Where(x => x.HardwareType == "Cpu" && x.Type == "Temperature").Select(x => x.Value).Max();
+        var cpu = sensors.Where(x => x.HardwareType == "Cpu" && x.Type == "Temperature" && x.Value is not null &&
+            !x.Name.Contains("Distance", StringComparison.OrdinalIgnoreCase)).ToArray();
+        // Package is the most useful default. Fall back to the hottest real CPU temperature.
+        return cpu.FirstOrDefault(x => x.Name.Contains("Package", StringComparison.OrdinalIgnoreCase))?.Value ?? cpu.Select(x => x.Value).Max();
     }
 }

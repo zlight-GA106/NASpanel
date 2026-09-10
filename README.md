@@ -2,7 +2,7 @@
 
 [下载 Windows x64 部署包](artifacts/StorageStation-win-x64.zip) · [IIS 部署指南（默认 HTTP，无需证书）](deploy/DEPLOYMENT.md)
 
-Windows Server 2022 Datacenter 单机服务器管理控制台，面向八盘位归档机。ASP.NET Core 8 / C# 12、SQLite、LibreHardwareMonitor、smartctl、SignalR、原生 HTML/CSS/JavaScript、ECharts 和 noVNC。
+Windows Server 2022 Datacenter 单机服务器管理控制台，支持可配置的 1–64 个磁盘架盘位。ASP.NET Core 8 / C# 12、SQLite、LibreHardwareMonitor、smartctl、SignalR、原生 HTML/CSS/JavaScript、ECharts 和 noVNC。
 
 这是一套包含真实硬件提供器与部署脚本的工程。开发环境默认使用模拟硬件，生产环境始终使用真实提供器；不自动把真实硬件故障替换成模拟数据。没有 Docker、Grafana、SPA 框架或 Node.js 后端。
 
@@ -27,7 +27,7 @@ Development 提供变化的 CPU、内存、温度、RPM、8 块模拟磁盘；BA
 
 - 总览、系统、存储、磁盘详情、风扇、远程控制、事件、设置、登录共 9 个独立页面。
 - SignalR 实时系统推送、断线重连，后台缓存响应 REST 请求。
-- LHM 递归硬件与传感器发现，Identifier 绑定，CPU 温度自动选择最热 CPU 温度传感器，Windows 内存数据。
+- LHM 递归硬件与传感器发现，Identifier 绑定，CPU 温度优先选择 CPU Package 并排除 Distance to TjMax，风扇自动选择有效 RPM，Windows 内存数据。
 - smartctl JSON 扫描、稳定身份、固定八盘位、未分配磁盘、三次扫描缺席判定离线、恢复事件。
 - HDD / SATA SSD / NVMe 健康判断、完整属性、温度及 SMART 历史、短/扩展自检、默认关闭的周期自检。
 - 自动曲线插值、防抖、手动到期、紧急输出、失速保护、退出恢复 BIOS，以及只读风扇兼容。
@@ -36,7 +36,7 @@ Development 提供变化的 CPU、内存、温度、RPM、8 块模拟磁盘；BA
 - 单管理员用户名修改、当前密码验证后的密码重置、头像上传；凭据变更使旧会话和连接失效。
 - 本地浏览器资源、IIS 配置、发布和 Windows Service 脚本。
 
-当前开发机上的运行检查使用模拟提供器。真实 ASUS B85M-K PWM、八块实际硬盘、IIS TLS / ARR 和真实 Windows VNC 桌面，仍需在目标服务器联调；代码不保证不受支持的主板一定能控制风扇。
+当前开发机上的运行检查使用模拟提供器。生产服务器仍需逐台核对 SMART、主板可写控制器与风扇对应关系；代码不保证不受支持的主板一定能控制风扇。
 
 ## 工程布局
 
@@ -126,7 +126,7 @@ IIS 站点物理目录为 `C:\StorageStation\wwwroot`，应用池使用 No Manag
 
 1. 打开 `http://服务器IP:8080/`，使用生产 Admin 登录。
 2. 系统页查看所有已发现传感器；名称、类型、Identifier 和可写能力会显示，首次发现也写入服务日志。
-3. 设置页绑定 CPU 温度、机箱风扇 RPM、对应可写 Control Identifier。CPU 自动发现使用最热 CPU 温度，不硬编码 `CPU Package` 名字。
+3. 设置页绑定 CPU 温度、机箱风扇 RPM、对应可写 Control Identifier。自动发现优先使用 CPU Package 和大于 0 的风扇 RPM；LibreHardwareMonitor 0.9.6 的底层传感器读取需要安装官方签名的 [PawnIO](https://github.com/namazso/PawnIO.Setup/releases/latest)。
 4. 设置页把服务器发现的序列号分别绑定到 BAY 01–08。未绑定盘仍会显示在“未分配磁盘”中。不能将一块盘重复分配到多个 BAY。
 5. 确认主板可控再勾选软件风扇控制；保存后去风扇页开启自动曲线。第一次上机建议观察 PWM 与实际 RPM 是否正确对应。
 
@@ -277,7 +277,7 @@ SQLite 使用 WAL。服务运行时不要只复制单个 `.db` 文件；停服�
 
 ## 必要验证与依赖来源
 
-`dotnet test` 覆盖关键曲线插值、紧急保护、防抖/步长、SMART 规则/趋势、NVMe 寿命、稳定身份、SQLite 八盘位唯一绑定，以及账户迁移/凭据变更使旧会话失效和头像输入校验。另有基本手工启动、登录、CSRF、非法 PWM、静态页、SignalR 与 noVNC 不可用场景检查；没有引入额外测试平台。
+`dotnet test` 覆盖关键曲线插值、紧急保护、防抖/步长、SMART 规则/趋势、NVMe 寿命、稳定身份、盘位迁移与唯一绑定、温度选择，以及账户迁移/凭据变更使旧会话失效和头像输入校验。另有基本手工启动、登录、CSRF、非法 PWM、静态页、SignalR 与 noVNC 不可用场景检查；没有引入额外测试平台。
 
 浏览器依赖版本锁在 `package-lock.json`。需要升级/重新生成资源时安装 Node.js 并运行 `deploy/update-assets.ps1`，然后重新发布；运行服务本身不需要 Node.js。noVNC 的原始模块和第三方许可证随资源一起分发。
 

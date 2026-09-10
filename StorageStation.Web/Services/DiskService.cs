@@ -108,14 +108,47 @@ public sealed class DiskService(IDiskProvider provider, StateCache cache, Statio
     }
     public async Task MapBay(int bay, string? serial, CancellationToken ct)
     {
-        if (bay is < 1 or > 8) throw new ArgumentException("盘位范围为 1–8");
+        if (bay is < 1 or > 64) throw new ArgumentException("盘位范围为 1–64");
         await operations.WaitAsync(ct);
         try
         {
+            var bays = await db.Bays(ct);
+            if (!bays.Any(b => (long)b["bay"]! == bay)) throw new ArgumentException("盘位不存在");
             if (serial is not null && !cache.Disks.Values.Any(d => d.Serial == serial)) throw new ArgumentException("只能绑定服务器已发现的磁盘");
-            if (serial is not null && (await db.Bays(ct)).Any(b => (long)b["bay"]! != bay && b["serial"] as string == serial)) throw new ArgumentException("该磁盘已分配到其他盘位，请先解除原绑定");
+            if (serial is not null && bays.Any(b => (long)b["bay"]! != bay && b["serial"] as string == serial)) throw new ArgumentException("该磁盘已分配到其他盘位，请先解除原绑定");
             await db.MapBay(bay, serial, ct); await RefreshBays(ct);
             await db.AddEvent("info", $"BAY {bay:00}", "MAPPING", serial is null ? "解除磁盘绑定" : $"绑定磁盘 {serial}", ct: ct);
+            await hub.Clients.All.SendAsync("disks", View(), ct);
+        }
+        finally { operations.Release(); }
+    }
+    public async Task<int> AddBay(CancellationToken ct)
+    {
+        await operations.WaitAsync(ct);
+        try
+        {
+            var used = (await db.Bays(ct)).Select(x => (int)(long)x["bay"]!).ToHashSet();
+            var bay = Enumerable.Range(1, 64).FirstOrDefault(x => !used.Contains(x));
+            if (bay == 0) throw new InvalidOperationException("磁盘架最多支持 64 个盘位");
+            await db.AddBay(bay, ct); await RefreshBays(ct);
+            await db.AddEvent("info", $"BAY {bay:00}", "BAY_ADDED", "已增加盘位", ct: ct);
+            await hub.Clients.All.SendAsync("disks", View(), ct);
+            return bay;
+        }
+        finally { operations.Release(); }
+    }
+    public async Task DeleteBay(int bay, CancellationToken ct)
+    {
+        await operations.WaitAsync(ct);
+        try
+        {
+            var bays = await db.Bays(ct);
+            var target = bays.FirstOrDefault(x => (long)x["bay"]! == bay) ?? throw new ArgumentException("盘位不存在");
+            if (target["serial"] is not null) throw new ArgumentException("请先解除该盘位的磁盘绑定");
+            if (bays.Count <= 1) throw new InvalidOperationException("磁盘架至少保留一个盘位");
+            if (await db.DeleteBay(bay, ct) == 0) throw new InvalidOperationException("盘位删除失败");
+            await RefreshBays(ct);
+            await db.AddEvent("info", $"BAY {bay:00}", "BAY_DELETED", "已删除盘位", ct: ct);
             await hub.Clients.All.SendAsync("disks", View(), ct);
         }
         finally { operations.Release(); }

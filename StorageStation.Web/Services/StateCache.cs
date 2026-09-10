@@ -21,5 +21,5 @@ public sealed class StateCache
     public object SystemView(string displayName) => new { status = Health.Level, health = Health, displayName, Hardware.Timestamp, Hardware.Hostname, Hardware.Os, Hardware.UptimeSeconds, Hardware.IsMock, Hardware.Error,
         cpu = new { name = Hardware.CpuName, usage = Hardware.CpuUsage, temperature = Hardware.CpuTemperature },
         memory = new { usage = Hardware.MemoryUsage, usedGb = Hardware.MemoryUsedGb, totalGb = Hardware.MemoryTotalGb }, fan = Fan,
-        disks = new { totalBays = 8, online = Bays.Count(b => b.Disk?.Online == true), warning = Bays.Count(b => b.Disk?.Health.Level == "warning"), critical = Bays.Count(b => b.Disk?.Health.Level == "critical") } };
+        disks = new { totalBays = Bays.Length, online = Bays.Count(b => b.Disk?.Online == true), warning = Bays.Count(b => b.Disk?.Health.Level == "warning"), critical = Bays.Count(b => b.Disk?.Health.Level == "critical") } };
 }

@@ -69,5 +69,10 @@ public static class ApiEndpoints
         {
             await service.MapBay(bay, string.IsNullOrWhiteSpace(request.Serial) ? null : request.Serial, ct); return Results.Ok();
         });
+        api.MapPost("/settings/bays", async (DiskService service, CancellationToken ct) => Results.Ok(new { bay = await service.AddBay(ct) }));
+        api.MapDelete("/settings/bays/{bay:int}", async (int bay, DiskService service, CancellationToken ct) =>
+        {
+            await service.DeleteBay(bay, ct); return Results.Ok();
+        });
     }
 }

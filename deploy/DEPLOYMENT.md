@@ -28,7 +28,7 @@ Install-WindowsFeature Web-Server,Web-Static-Content,Web-Default-Doc,Web-WebSock
 
 如果返回结果要求重启，重启后继续。
 
-## 3. 安装四项依赖
+## 3. 安装五项依赖
 
 使用官方 Windows x64 安装程序，依次安装：
 
@@ -38,6 +38,7 @@ Install-WindowsFeature Web-Server,Web-Static-Content,Web-Default-Doc,Web-WebSock
 | IIS URL Rewrite 2 | [官方下载](https://www.iis.net/downloads/microsoft/url-rewrite)，处理页面及 API 路由。 |
 | IIS ARR 3 | [官方下载](https://www.iis.net/downloads/microsoft/application-request-routing)，将 API / WebSocket 请求转发到后台服务。 |
 | smartmontools | [官方下载](https://www.smartmontools.org/wiki/Download)，读取硬盘 SMART。 |
+| PawnIO | [官方签名安装程序](https://github.com/namazso/PawnIO.Setup/releases/latest)，LibreHardwareMonitor 0.9.6 读取 CPU、Nuvoton 温度和风扇转速所需。使用默认签名版本安装。 |
 
 如果 Hosting Bundle 安装在 IIS 之前，需要修复或重装 Hosting Bundle。完成后重新打开管理员 PowerShell：
 
@@ -46,6 +47,8 @@ dotnet --list-runtimes
 ```
 
 应看到 `Microsoft.NETCore.App 8.0.x` 和 `Microsoft.AspNetCore.App 8.0.x`。
+
+安装 PawnIO 后可用 `Get-Service PawnIO` 确认驱动为 `Running`。如果系统页只有 CPU 负载而温度和风扇都是空值，先检查该服务；不要关闭驱动签名或 Windows 安全功能。
 
 ## 4. 配置 smartctl 路径
 
@@ -149,11 +152,11 @@ http://192.168.1.50:8080/
 
 1. 确认网页没有“开发模式 / 模拟硬件”提示。
 2. 系统页检查真实 CPU、内存及传感器。
-3. 设置页按硬盘序列号绑定 BAY 01–08，核对实物盘位。
+3. 设置页按实物磁盘架增加或删除盘位，再按硬盘序列号完成绑定。
 4. 绑定 CPU 温度与机箱风扇 RPM。软件风扇控制默认关闭，确认主板可写控制器与目标风扇对应后再启用。
 5. “用户账户”中可以重命名登录用户、重置密码和上传头像；顶部铅笔用于修改主机显示名称。
 
-主板只提供 RPM、不提供可写 Control 时，保持 BIOS 风扇控制即可。真实硬件、IIS 和 VNC 仍需要在目标服务器检查；开发环境使用模拟数据。
+主板只提供 RPM、不提供可写 Control 时，保持 BIOS 风扇控制即可。Nuvoton 等主板传感器依赖 PawnIO；AIDA64 能读取而本控制台为空时，优先检查 PawnIO 服务并重启 `StorageStationService`。开发环境使用模拟数据。
 
 ## 9. 可选：网页远程桌面
 

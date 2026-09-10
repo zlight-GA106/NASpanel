@@ -32,9 +32,20 @@ public sealed class StationDatabase
             CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, timestamp INTEGER NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL, code TEXT NOT NULL, message TEXT NOT NULL, details TEXT, acknowledged INTEGER NOT NULL DEFAULT 0);
             CREATE INDEX IF NOT EXISTS ix_events_time ON events(timestamp);
             CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS disk_bays(bay_number INTEGER PRIMARY KEY CHECK(bay_number BETWEEN 1 AND 8), disk_serial TEXT UNIQUE, model TEXT, last_seen INTEGER);
-            PRAGMA user_version=1;
+            CREATE TABLE IF NOT EXISTS disk_bays(bay_number INTEGER PRIMARY KEY CHECK(bay_number BETWEEN 1 AND 64), disk_serial TEXT UNIQUE, model TEXT, last_seen INTEGER);
             """, [], ct);
+        var bayTable = (await Query("SELECT sql FROM sqlite_master WHERE type='table' AND name='disk_bays'", [], ct)).FirstOrDefault()?["sql"] as string;
+        if (bayTable?.Contains("1 AND 8", StringComparison.OrdinalIgnoreCase) == true)
+            await Write("""
+                BEGIN IMMEDIATE;
+                ALTER TABLE disk_bays RENAME TO disk_bays_legacy;
+                CREATE TABLE disk_bays(bay_number INTEGER PRIMARY KEY CHECK(bay_number BETWEEN 1 AND 64), disk_serial TEXT UNIQUE, model TEXT, last_seen INTEGER);
+                INSERT INTO disk_bays(bay_number,disk_serial,model,last_seen) SELECT bay_number,disk_serial,model,last_seen FROM disk_bays_legacy;
+                DROP TABLE disk_bays_legacy;
+                PRAGMA user_version=2;
+                COMMIT;
+                """, [], ct);
+        else await Write("PRAGMA user_version=2", [], ct);
         for (var bay = 1; bay <= 8; bay++) await Write("INSERT OR IGNORE INTO disk_bays(bay_number) VALUES($bay)", [("$bay", bay)], ct);
     }
     public async Task<int> Write(string sql, (string, object?)[] args, CancellationToken ct = default)
@@ -93,6 +104,8 @@ public sealed class StationDatabase
         FROM disk_metrics WHERE disk_id=$id AND timestamp >= $since GROUP BY timestamp / $bucket ORDER BY timestamp
         """, [("$id", id), ("$bucket", Math.Max(300, hours * 3600 / 720)), ("$since", DateTimeOffset.UtcNow.AddHours(-hours).ToUnixTimeSeconds())], ct);
     public Task<List<Dictionary<string, object?>>> Bays(CancellationToken ct = default) => Query("SELECT bay_number AS bay, disk_serial AS serial FROM disk_bays ORDER BY bay_number", [], ct);
+    public Task<int> AddBay(int bay, CancellationToken ct) => Write("INSERT INTO disk_bays(bay_number) VALUES($bay)", [("$bay", bay)], ct);
+    public Task<int> DeleteBay(int bay, CancellationToken ct) => Write("DELETE FROM disk_bays WHERE bay_number=$bay AND disk_serial IS NULL", [("$bay", bay)], ct);
     public Task MapBay(int bay, string? serial, CancellationToken ct) => Write("UPDATE disk_bays SET disk_serial=$serial WHERE bay_number=$bay", [("$serial", serial), ("$bay", bay)], ct);
     public Task TouchBay(DiskStatus d, CancellationToken ct) => Write("UPDATE disk_bays SET model=$model,last_seen=$t WHERE disk_serial=$serial", [("$model", d.Model), ("$t", d.Timestamp.ToUnixTimeSeconds()), ("$serial", d.Serial)], ct);
     public Task AddEvent(string level, string source, string code, string message, string? details = null, CancellationToken ct = default) => Write("INSERT INTO events(timestamp,level,source,code,message,details) VALUES($t,$l,$s,$c,$m,$d)", [("$t", DateTimeOffset.UtcNow.ToUnixTimeSeconds()), ("$l", level), ("$s", source), ("$c", code), ("$m", message), ("$d", details)], ct);

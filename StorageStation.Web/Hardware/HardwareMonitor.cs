@@ -52,7 +52,9 @@ public sealed class HardwareMonitor(SettingsService settings, ILogger<HardwareMo
             var memory = ReadMemory();
             var conf = settings.Current;
             // Read-only fan discovery is safe. Writable output always requires an explicit identifier.
-            var fan = string.IsNullOrWhiteSpace(conf.FanRpmSensorId) ? all.FirstOrDefault(x => x.Type == "Fan") : all.FirstOrDefault(x => x.Id == conf.FanRpmSensorId && x.Type == "Fan");
+            var fan = string.IsNullOrWhiteSpace(conf.FanRpmSensorId)
+                ? all.Where(x => x.Type == "Fan").OrderByDescending(x => x.Value is > 0).ThenByDescending(x => x.Value).FirstOrDefault()
+                : all.FirstOrDefault(x => x.Id == conf.FanRpmSensorId && x.Type == "Fan");
             var pwm = all.FirstOrDefault(x => x.Id == conf.FanControlSensorId && x.Type == "Control");
             return (new(now, Environment.MachineName, WindowsDescription(), Environment.TickCount64 / 1000d,
                 hardware.FirstOrDefault(x => x.HardwareType == HardwareType.Cpu)?.Name ?? "--", load, SensorDiscovery.SelectTemperature(all, conf.CpuTemperatureSensorId),
